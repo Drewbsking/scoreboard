@@ -1,9 +1,10 @@
 // ============= Type Definitions =============
-type Mode = "DEFAULT" | "PENALTY_ENTRY" | "PENALTY_EDIT";
+type Mode = "DEFAULT" | "PENALTY_ENTRY" | "PENALTY_EDIT" | "PENALTY_REMOVE" | "CLOCK_SET";
 type Team = "HOME" | "GUEST";
 type Stage = "PLAYER" | "TIME" | null;
 type UIMode = "DEFAULT" | "MENU" | "TEAM_NAME";
 type TeamNameStage = "OFF" | "WAIT_POST" | "SELECT_SIDE" | "TYPING";
+type RemovalStage = "NONE" | "PLAYER_CLEARED" | "TIME_CLEARED";
 
 interface PenaltyEntry {
   player: number;
@@ -36,6 +37,8 @@ interface State {
   team_name_buffer: string;
   team_name_original: string;
   team_name_overlay_prev: boolean;
+  removal_stage: RemovalStage;
+  removal_penalty: PenaltyEntry | null;
 }
 
 interface ScoreboardElements {
@@ -76,11 +79,19 @@ const state: State = {
   team_name_buffer: "",
   team_name_original: "",
   team_name_overlay_prev: false,
+  removal_stage: "NONE",
+  removal_penalty: null,
 };
+
+// Clock control state
+let clockRunning = false;
+let clockInterval: number | null = null;
+let countDown = true; // true = count down, false = count up
 
 const statusEl = document.getElementById('status') as HTMLElement | null;
 const scoreboardEl = document.getElementById('scoreboard') as HTMLElement | null;
 const overlayToggleEl = document.getElementById('overlayToggle') as HTMLInputElement | null;
+const hornAudio = document.getElementById('hornAudio') as HTMLAudioElement | null;
 const sbElements: ScoreboardElements = {
   homeName: document.getElementById('sbHomeName'),
   guestName: document.getElementById('sbGuestName'),
@@ -473,6 +484,150 @@ function end_press(): void {
   }
 }
 
+function horn_press(): void {
+  if (hornAudio) {
+    // Reset to beginning if already playing
+    hornAudio.currentTime = 0;
+    hornAudio.play().catch((error) => {
+      console.warn('Horn audio playback failed:', error);
+      // Fallback: show visual feedback if audio fails
+      setStatus('🚨 HORN! 🚨');
+      setTimeout(() => {
+        if (state.ui_mode === 'DEFAULT') {
+          lcd_scores();
+        }
+      }, 1500);
+    });
+  } else {
+    // No audio element, show visual feedback
+    setStatus('🚨 HORN! 🚨');
+    setTimeout(() => {
+      if (state.ui_mode === 'DEFAULT') {
+        lcd_scores();
+      }
+    }, 1500);
+  }
+}
+
+// ============= Clock Control Functions =============
+function updatePenaltyTimers(): void {
+  // Countdown all active penalties when game clock is running
+  if (!clockRunning) return;
+
+  let penaltiesChanged = false;
+
+  // Update HOME penalties
+  for (let i = state.penalties.HOME.length - 1; i >= 0; i--) {
+    if (state.penalties.HOME[i].secs > 0) {
+      state.penalties.HOME[i].secs -= 1;
+      penaltiesChanged = true;
+
+      // Remove penalty if time expired
+      if (state.penalties.HOME[i].secs === 0) {
+        state.penalties.HOME.splice(i, 1);
+      }
+    }
+  }
+
+  // Update GUEST penalties
+  for (let i = state.penalties.GUEST.length - 1; i >= 0; i--) {
+    if (state.penalties.GUEST[i].secs > 0) {
+      state.penalties.GUEST[i].secs -= 1;
+      penaltiesChanged = true;
+
+      // Remove penalty if time expired
+      if (state.penalties.GUEST[i].secs === 0) {
+        state.penalties.GUEST.splice(i, 1);
+      }
+    }
+  }
+
+  if (penaltiesChanged) {
+    renderScoreboard();
+  }
+}
+
+function clockTick(): void {
+  if (countDown) {
+    // Count down mode
+    if (state.clock_secs > 0) {
+      state.clock_secs -= 1;
+    } else {
+      // Clock reached 0:00 - stop and optionally play horn
+      stopClock();
+      if (hornAudio) {
+        hornAudio.currentTime = 0;
+        hornAudio.play().catch(() => {
+          // Silently fail if audio doesn't play
+        });
+      }
+    }
+  } else {
+    // Count up mode
+    state.clock_secs += 1;
+  }
+
+  // Update penalty timers every second
+  updatePenaltyTimers();
+
+  renderScoreboard();
+}
+
+function startClock(): void {
+  if (clockRunning) return; // Already running
+
+  // If clock is at 0 in countdown mode, set default time (20:00)
+  if (countDown && state.clock_secs === 0) {
+    state.clock_secs = 1200; // 20 minutes
+  }
+
+  clockRunning = true;
+  clockInterval = window.setInterval(clockTick, 1000);
+  renderScoreboard();
+}
+
+function stopClock(): void {
+  // Handle menu/team name mode exits first
+  if (state.ui_mode === 'TEAM_NAME') {
+    exitTeamNameMode();
+    return;
+  }
+  if (state.ui_mode === 'MENU') {
+    exitMenu();
+    return;
+  }
+
+  // Stop the game clock
+  if (clockInterval !== null) {
+    clearInterval(clockInterval);
+    clockInterval = null;
+  }
+  clockRunning = false;
+  renderScoreboard();
+}
+
+function toggleClockDirection(): void {
+  countDown = !countDown;
+  // Update status to show current mode
+  setStatus(`Clock mode: ${countDown ? 'COUNT DOWN' : 'COUNT UP'}`);
+  setTimeout(() => {
+    if (state.ui_mode === 'DEFAULT') {
+      lcd_scores();
+    }
+  }, 1500);
+}
+
+function set_main_clock(): void {
+  if (state.ui_mode !== 'DEFAULT') return;
+  // Enter clock set mode
+  Object.assign(state, { mode: 'CLOCK_SET', buffer: '', stage: null, time_default: false });
+  setStatus(`SET CLOCK: ${mask_time(state.buffer)}`);
+}
+
+function lcd_clock_set(): void {
+  setStatus(`SET CLOCK: ${mask_time(state.buffer)}`);
+}
+
 function start_penalty_entry(team: Team): void {
   if (state.ui_mode !== 'DEFAULT') return;
   Object.assign(state, { mode: 'PENALTY_ENTRY', team, last_team: team, buffer: '', stage: 'PLAYER', _player: null, time_default: false });
@@ -481,7 +636,13 @@ function start_penalty_entry(team: Team): void {
 
 function penalty_press_digit(d: string): void {
   if (state.ui_mode !== 'DEFAULT') return;
-  if (state.mode === 'PENALTY_ENTRY') {
+  if (state.mode === 'CLOCK_SET') {
+    // Handle clock setting digit entry
+    if (state.buffer.length < 4) {
+      state.buffer += d;
+    }
+    lcd_clock_set();
+  } else if (state.mode === 'PENALTY_ENTRY') {
     if (state.stage === 'PLAYER') {
       if (state.buffer.length < 2) state.buffer += d;
       lcd_penalty_entry_player();
@@ -517,6 +678,70 @@ function penalty_enter(): void {
   if (state.ui_mode !== 'DEFAULT') {
     return;
   }
+
+  // Handle clock set mode
+  if (state.mode === 'CLOCK_SET') {
+    if (!state.buffer) {
+      // No time entered, exit clock set mode
+      Object.assign(state, { mode: 'DEFAULT', buffer: '', stage: null });
+      lcd_scores();
+      return;
+    }
+    // Parse and set the clock
+    const secs = parse_time_on_enter(state.buffer);
+    state.clock_secs = secs;
+    setStatus(`Clock set to ${fmt_mmss(secs)}`);
+    renderScoreboard();
+    // Exit clock set mode
+    Object.assign(state, { mode: 'DEFAULT', buffer: '', stage: null });
+    setTimeout(() => {
+      if (state.ui_mode === 'DEFAULT') {
+        lcd_scores();
+      }
+    }, 1500);
+    return;
+  }
+
+  // Handle penalty removal process (two-step from manual)
+  if (state.mode === 'PENALTY_REMOVE') {
+    if (state.removal_stage === 'TIME_CLEARED' && state.team && state.removal_penalty) {
+      // Final ENTER - actually remove the penalty
+      const team = state.team;
+      const idx = state.edit_index;
+      const L = state.penalties[team];
+
+      if (idx < L.length) {
+        const removedPenalty = L.splice(idx, 1)[0];
+        setStatus(`Removed: PL${removedPenalty.player} PN ${fmt_mmss(removedPenalty.secs)}`);
+        renderScoreboard();
+
+        // Adjust edit index if needed
+        if (state.edit_index >= L.length && L.length > 0) {
+          state.edit_index = L.length - 1;
+        } else if (L.length === 0) {
+          state.edit_index = 0;
+        }
+
+        // Reset removal state and return to edit mode
+        state.removal_stage = 'NONE';
+        state.removal_penalty = null;
+        state.mode = 'PENALTY_EDIT';
+
+        // Show updated selection after brief delay
+        setTimeout(() => {
+          if (state.mode === 'PENALTY_EDIT') {
+            lcd_penalty_edit_select();
+          }
+        }, 1000);
+        return;
+      }
+    } else if (state.removal_stage === 'PLAYER_CLEARED') {
+      // First ENTER - acknowledge player clear, wait for time clear
+      setStatus(`Press CLEAR to remove time`);
+      return;
+    }
+  }
+
   if (state.mode === 'PENALTY_ENTRY') {
     if (state.stage === 'PLAYER') {
       if (!state.buffer) {
@@ -583,6 +808,22 @@ function penalty_clear(): void {
   if (state.ui_mode !== 'DEFAULT') {
     return;
   }
+
+  // Handle clock set mode
+  if (state.mode === 'CLOCK_SET') {
+    if (state.buffer) {
+      // Clear the buffer
+      state.buffer = '';
+      lcd_clock_set();
+    } else {
+      // Exit clock set mode
+      Object.assign(state, { mode: 'DEFAULT', buffer: '', stage: null });
+      lcd_scores();
+    }
+    return;
+  }
+
+  // Handle buffer clearing
   if (state.buffer) {
     if (state.stage === 'TIME' && (state.mode === 'PENALTY_ENTRY' || state.mode === 'PENALTY_EDIT')) {
       state.buffer = '200';
@@ -601,13 +842,47 @@ function penalty_clear(): void {
     state.buffer = '';
     if (state.mode === 'PENALTY_ENTRY') {
       (state.stage === 'PLAYER') ? lcd_penalty_entry_player() : lcd_penalty_entry_time();
-    } else if (state.mode === 'PENALTY_EDIT') {
+    } else if (state.mode === 'PENALTY_EDIT' || state.mode === 'PENALTY_REMOVE') {
       lcd_penalty_edit_select();
     }
-  } else {
-    Object.assign(state, { mode: 'DEFAULT', team: null, buffer: '', stage: null, _player: null, time_default: false });
-    lcd_scores();
+    return;
   }
+
+  // No buffer - handle penalty removal (two-step process from manual)
+  if (state.mode === 'PENALTY_REMOVE') {
+    // Second CLEAR - actually remove the penalty
+    if (state.removal_stage === 'PLAYER_CLEARED' && state.team && state.removal_penalty) {
+      const team = state.team;
+      const idx = state.edit_index;
+      const L = state.penalties[team];
+
+      if (idx < L.length) {
+        setStatus(`PL--  PN --:--`);
+        state.removal_stage = 'TIME_CLEARED';
+        return;
+      }
+    }
+  } else if (state.mode === 'PENALTY_EDIT' && state.team) {
+    // First CLEAR - start removal process
+    const team = state.team;
+    const idx = state.edit_index;
+    const L = state.penalties[team];
+
+    // If pointing at an actual penalty (not phantom), start removal
+    if (idx < L.length) {
+      state.mode = 'PENALTY_REMOVE';
+      state.removal_penalty = { ...L[idx] }; // Save copy for final message
+      state.removal_stage = 'PLAYER_CLEARED';
+      setStatus(`PL--  PN ${fmt_mmss(L[idx].secs)}`);
+      return;
+    }
+  }
+
+  // Otherwise exit current mode
+  state.removal_stage = 'NONE';
+  state.removal_penalty = null;
+  Object.assign(state, { mode: 'DEFAULT', team: null, buffer: '', stage: null, _player: null, time_default: false });
+  lcd_scores();
 }
 
 function start_penalty_edit(team: Team): void {
@@ -618,7 +893,14 @@ function start_penalty_edit(team: Team): void {
 }
 
 function ensure_edit_mode(): void {
-  if (state.mode !== 'PENALTY_EDIT') start_penalty_edit(state.last_team);
+  if (state.mode !== 'PENALTY_EDIT' && state.mode !== 'PENALTY_REMOVE') {
+    start_penalty_edit(state.last_team);
+  } else if (state.mode === 'PENALTY_REMOVE') {
+    // Cancel removal if navigating away
+    state.mode = 'PENALTY_EDIT';
+    state.removal_stage = 'NONE';
+    state.removal_penalty = null;
+  }
 }
 
 function move_edit_selection(delta: number): void {
@@ -782,7 +1064,7 @@ if (grid) {
   grid.appendChild(place(mkBtn('9', '', () => penalty_press_digit('9')), 2, 13));
   grid.appendChild(place(mkBtn('↑', 'gray', () => move_edit_selection(-1)), 2, 15));
   grid.appendChild(place(mkBtn('AUTO\nHORN\n*', '', null), 2, 17));
-  grid.appendChild(place(mkBtn('HORN', 'yellow', null), 2, 18));
+  grid.appendChild(place(mkBtn('HORN', 'yellow', horn_press), 2, 18));
 }
 
 // Row 2
@@ -815,8 +1097,8 @@ if (grid) {
   grid.appendChild(place(mkBtn('2', '', () => penalty_press_digit('2')), 4, 12));
   grid.appendChild(place(mkBtn('3', '', () => penalty_press_digit('3')), 4, 13));
   grid.appendChild(place(mkBtn('↓', 'gray', () => move_edit_selection(+1)), 4, 15));
-  grid.appendChild(place(mkBtn('COUNT\nUP/DOWN\n*', '', null), 4, 17));
-  grid.appendChild(place(mkBtn('START', 'success', null), 4, 18));
+  grid.appendChild(place(mkBtn('COUNT\nUP/DOWN\n*', '', toggleClockDirection), 4, 17));
+  grid.appendChild(place(mkBtn('START', 'success', startClock), 4, 18));
 }
 
 // Row 4
@@ -830,8 +1112,8 @@ if (grid) {
   grid.appendChild(place(mkBtn('CLEAR\nNO', '', penalty_clear), 5, 11));
   grid.appendChild(place(mkBtn('0', '', () => penalty_press_digit('0')), 5, 12));
   grid.appendChild(place(mkBtn('ENTER\n*\nYES', '', penalty_enter), 5, 13));
-  grid.appendChild(place(mkBtn('SET\nMAIN\nCLOCK\n*', '', null), 5, 17));
-  grid.appendChild(place(mkBtn('END', 'red', end_press), 5, 18));
+  grid.appendChild(place(mkBtn('SET\nMAIN\nCLOCK\n*', '', set_main_clock), 5, 17));
+  grid.appendChild(place(mkBtn('END', 'red', stopClock), 5, 18));
 }
 
 // Inject labels & frames into grid

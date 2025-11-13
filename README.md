@@ -25,9 +25,17 @@ scoreboard/
 - **Scoreboard Display**: Visual representation of the game scoreboard
 - **Score Management**: Track scores for both HOME and GUEST teams
 - **Penalty Tracking**: Add, edit, and display player penalties with timers
+  - Automatic countdown when game clock runs
+  - Auto-remove when penalty time expires
+  - Manual penalty removal with CLEAR button
 - **Team Name Editor**: Customize team names using an on-screen keyboard
 - **Period Control**: Manage game periods
 - **Clock Display**: Show game clock in MM:SS format
+- **Goal Horn**: Detroit Red Wings horn sound effect (audio file required)
+- **Game Clock**: Running clock with count down/count up modes
+  - Auto-plays horn when countdown reaches 0:00
+  - Default 20:00 period time
+  - Manual clock setting with SET MAIN CLOCK button
 - **Responsive Design**: Adapts to different screen sizes
 - **Menu System**: Access different modes and settings
 
@@ -52,6 +60,16 @@ scoreboard/
 
 3. Open `index.html` in a web browser
 
+### Audio Setup (Optional)
+
+To enable the Detroit Red Wings goal horn:
+
+1. Download a Red Wings horn audio file (MP3 format)
+2. Save it to `assets/audio/red-wings-horn.mp3`
+3. See [AUDIO_SETUP.md](AUDIO_SETUP.md) for detailed instructions
+
+**Note**: The horn button will still work without audio (shows visual feedback).
+
 ### Development
 
 To watch for changes and automatically recompile:
@@ -64,11 +82,22 @@ npm run watch
 ### Basic Controls
 
 - **Score Buttons**: Use "SCORE +1" buttons to increment team scores
-- **Penalty Entry**: Click "PLAYER * PENLTY *" to enter penalty information
-  - Enter player number, press ENTER
-  - Enter penalty time (default 2:00), press ENTER
-- **Penalty Edit**: Click "< PENALTY" or "PENLTY >" to edit existing penalties
-  - Use ↑/↓ arrow keys to navigate through penalties
+- **Penalty Management**: Full penalty tracking system matching Daktronics manual
+  - **Add**: Click "PLAYER * PENLTY *", enter player #, enter time
+  - **Edit**: Use ↑/↓ arrows, press ENTER, modify time
+  - **Remove**: Navigate to penalty, CLEAR → ENTER → CLEAR → ENTER (two-step process)
+  - **Auto**: Penalties count down with game clock and auto-remove at 0:00
+  - See [PENALTY_GUIDE.md](PENALTY_GUIDE.md) for complete instructions
+- **Horn**: Click the yellow "HORN" button to play the Detroit Red Wings goal horn 🚨
+- **Game Clock**:
+  - **START** (green button): Start the game clock
+    - If clock is at 0:00, automatically sets to 20:00
+  - **END** (red button): Stop the game clock
+  - **COUNT UP/DOWN**: Toggle between countdown and count-up modes
+  - **SET MAIN CLOCK**: Manually set the game clock time
+    - Press button, enter time (e.g., `1530` for 15:30), press ENTER
+    - Press CLEAR to cancel or clear buffer
+  - Clock automatically plays horn when reaching 0:00 in countdown mode
 - **Menu**: Press the MENU button to access additional features
 - **Team Names**: Select "Team Name Mode" from the menu to customize team names
 
