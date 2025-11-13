@@ -1,0 +1,324 @@
+:root{
+  --grid-cols: 18;
+  --button-rows: 4;
+  --gap: 8px;
+  --btn-min-px: 56;
+  --btn-min: clamp(calc(var(--btn-min-px) * 1px), 4.5vw, 100px);
+  --cell-size: var(--btn-min);
+  --radius: 10px;
+  --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+}
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: var(--font);
+  background:#f2f3f5;
+}
+.wrap {
+  display:flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  padding: clamp(16px, 2vw, 32px);
+  box-sizing: border-box;
+}
+
+.title { font-weight: 700; font-size: 20px; margin: 0 0 10px; color:#111; }
+
+/* LCD status bar */
+.status {
+  border-radius: 12px;
+  background: #0b1a33;
+  color: #bde4ff;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  letter-spacing: 0.5px;
+  min-height: 24px;
+  display:flex; align-items:center;
+  box-shadow: inset 0 0 0 2px #0e2a55, 0 1px 2px rgba(0,0,0,.15);
+}
+
+.toolbar { display:flex; gap:14px; align-items:center; }
+.toolbar label { user-select: none; }
+.status, .toolbar { align-self: stretch; }
+
+/* Scoreboard */
+.scoreboard {
+  align-self: center;
+  width: min(100%, 960px);
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-rows: auto auto auto;
+  gap: 16px;
+  padding: clamp(16px, 2.5vw, 28px);
+  margin-top: 8px;
+  background: linear-gradient(160deg, #2c7be5 0%, #1f5dbf 100%);
+  border-radius: 20px;
+  border: 6px solid #f5f7fb;
+  box-shadow: 0 18px 40px rgba(15, 42, 87, 0.35), inset 0 0 20px rgba(255,255,255,0.08);
+  color: #fefefe;
+  position: relative;
+  overflow: hidden;
+}
+.scoreboard::after{
+  content:'';
+  position:absolute;
+  inset:8px;
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: 16px;
+  pointer-events:none;
+}
+.scoreboard__cell{
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:10px;
+  text-align:center;
+}
+.scoreboard__cell--home{ grid-column:1; grid-row:1 / span 2; }
+.scoreboard__cell--clock{ grid-column:2; grid-row:1 / span 2; }
+.scoreboard__cell--guest{ grid-column:3; grid-row:1 / span 2; }
+.scoreboard__cell--home-penalties{ grid-column:1; grid-row:3; }
+.scoreboard__cell--center{ grid-column:2; grid-row:3; }
+.scoreboard__cell--guest-penalties{ grid-column:3; grid-row:3; }
+
+.scoreboard__team-name{
+  font-size: clamp(20px, 2.4vw, 32px);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #ffd560;
+  text-shadow: 0 0 6px rgba(255, 162, 0, 0.5), 0 0 18px rgba(255, 162, 0, 0.7);
+}
+.scoreboard__score-box,
+.scoreboard__clock-box,
+.scoreboard__penalty-slot{
+  background: #050505;
+  border-radius: 12px;
+  padding: clamp(10px, 1.6vw, 18px) clamp(14px, 2vw, 24px);
+  border: 3px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 18px rgba(0,0,0,0.65), inset 0 0 4px rgba(255,255,255,0.12);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width: 0;
+}
+.scoreboard__clock-box{
+  width: 100%;
+}
+.scoreboard__digits{
+  font-family: 'Roboto Mono', 'Courier New', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 12px currentColor, 0 0 22px rgba(255,255,255,0.35);
+  white-space: nowrap;
+}
+.scoreboard__digits--score{
+  font-size: clamp(48px, 7vw, 130px);
+  color: #ff6b5f;
+}
+.scoreboard__digits--clock{
+  font-size: clamp(40px, 6vw, 110px);
+  color: #8dff7c;
+}
+.scoreboard__digits--period{
+  font-size: clamp(28px, 4vw, 72px);
+  color: #ffe17c;
+}
+.scoreboard__digits--mini{
+  font-size: clamp(18px, 2.4vw, 26px);
+  letter-spacing: 0.12em;
+  color: #e3ecff;
+  text-shadow: 0 0 8px rgba(227,236,255,0.5);
+}
+.scoreboard__brand{
+  font-size: clamp(12px, 1.4vw, 16px);
+  letter-spacing: 0.4em;
+  color: rgba(246, 251, 255, 0.8);
+  margin-bottom: -4px;
+}
+.scoreboard__period-box{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap: clamp(10px, 1.6vw, 18px);
+  width: 100%;
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+}
+.scoreboard__subtitle{
+  font-size: clamp(14px, 1.8vw, 20px);
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+}
+.scoreboard__penalty-grid{
+  width: 100%;
+  display:grid;
+  gap: 10px;
+}
+.scoreboard__penalty-row{
+  display:grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+  align-items:center;
+}
+.scoreboard__penalty-row .scoreboard__digits{
+  display:block;
+  width: 100%;
+  background:#050505;
+  border-radius: 8px;
+  padding: clamp(6px, 1vw, 10px);
+  border: 2px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 12px rgba(0,0,0,0.65);
+}
+.scoreboard__penalty-row--empty .scoreboard__digits{
+  color: rgba(255,255,255,0.18);
+  text-shadow: none;
+}
+.scoreboard__center{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap: 14px;
+  width:100%;
+}
+.scoreboard__center-penalties{
+  display:flex;
+  gap: clamp(12px, 2vw, 26px);
+  align-items:center;
+}
+.scoreboard__center-penalties .scoreboard__digits{
+  background:#050505;
+  border-radius: 10px;
+  padding: clamp(8px, 1.3vw, 14px) clamp(16px, 2.3vw, 22px);
+  border: 3px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.65);
+}
+
+@media (max-width: 900px){
+  .scoreboard{
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto auto auto auto;
+  }
+  .scoreboard__cell--home{ grid-column:1; grid-row:1; }
+  .scoreboard__cell--clock{ grid-column:1 / span 2; grid-row:2; }
+  .scoreboard__cell--guest{ grid-column:2; grid-row:1; }
+  .scoreboard__cell--home-penalties{ grid-column:1; grid-row:3; }
+  .scoreboard__cell--center{ grid-column:1 / span 2; grid-row:4; }
+  .scoreboard__cell--guest-penalties{ grid-column:2; grid-row:3; }
+}
+
+@media (max-width: 640px){
+  .scoreboard{
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(6, auto);
+  }
+  .scoreboard__cell--home,
+  .scoreboard__cell--clock,
+  .scoreboard__cell--guest,
+  .scoreboard__cell--home-penalties,
+  .scoreboard__cell--center,
+  .scoreboard__cell--guest-penalties{
+    grid-column:1;
+  }
+  .scoreboard__center-penalties{
+    width:100%;
+    justify-content:space-between;
+  }
+}
+
+/* Main grid matches Tk rows (1..4) and cols (0..17) */
+.grid {
+  display: grid;
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  grid-template-columns: repeat(var(--grid-cols), var(--cell-size));
+  grid-template-rows: auto repeat(var(--button-rows), var(--cell-size));
+  gap: var(--gap);
+  background: #d1d5db;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.4);
+  margin: 0;
+  overflow: auto;
+  align-content: start;
+  align-items: start;
+  justify-content: center;
+  justify-items: stretch;
+}
+
+.btn {
+  display:flex;
+  flex-direction: column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  border: 0;
+  border-radius: var(--radius);
+  background: #fff;
+  color:#111;
+  font-weight: 600;
+  line-height: 1.15;
+  box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 2px 6px rgba(0,0,0,.12);
+  cursor: pointer;
+  white-space: pre-line;
+  padding: 8px;
+  box-sizing: border-box;
+}
+.btn:active { transform: translateY(1px); }
+
+.btn.gray { background:#e5e7eb; }
+.btn.lgray { background:#f3f4f6; }
+.btn.green { background:#c7f9cc; }
+.btn.pink { background:#ffd6e7; }
+.btn.yellow { background:#fff3b0; }
+.btn.black { background:#111; color:#fff; }
+.btn.red { background:#fecaca; }
+.btn.success { background:#bbf7d0; }
+
+/* Labels */
+.label { font-weight: 800; font-size: 12px; text-align:center; }
+.label.home { color:#067a00; }
+.label.guest{ color:#b00020; }
+
+/* Subframe (HOME/GUEST boxes) */
+.frame {
+  background:#c7c9cc;
+  border-radius: 12px;
+  padding: 8px;
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: stretch;
+  align-items: stretch;
+  grid-auto-rows: minmax(var(--btn-min), auto);
+  height: 100%;
+}
+
+/* Overlay panel occupies same grid rows/cols as Tk (rows 1..4, cols 0..9) */
+.overlay {
+  display: grid;
+  gap: var(--gap);
+  grid-template-columns: repeat(10, var(--cell-size));
+  grid-auto-rows: var(--cell-size);
+  align-content: stretch;
+  align-items: stretch;
+}
+
+/* Utilities for grid placement */
+.at { position: relative; }
+.hidden { display:none !important; }
+.muted { opacity: .7; }

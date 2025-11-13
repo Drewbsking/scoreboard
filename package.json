@@ -1,0 +1,17 @@
+{
+  "name": "daktronics-allsports-4100-emulator",
+  "version": "1.0.0",
+  "description": "Web-based emulator for Daktronics AllSports 4100 scoreboard controller",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["scoreboard", "daktronics", "emulator"],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}
