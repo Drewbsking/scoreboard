@@ -295,7 +295,7 @@ function setTeamNameStage(stage: TeamNameStage, message?: string): void {
 
 function overlayIdToChar(id: string): string | null {
   if (!id) return null;
-  if (id.length === 1 && /[A-Z0-9.]/.test(id)) return id === '.' ? '.' : id;
+  if (id.length === 1 && /[A-Z0-9#]/.test(id)) return id;
   if (id === 'SPACE') return ' ';
   if (id === 'MESSAGE_NUMBER') return '#';
   return null;
@@ -303,7 +303,7 @@ function overlayIdToChar(id: string): string | null {
 
 function applyTeamNameBuffer(nextValue: string): void {
   if (!state.team_name_target) return;
-  const cleaned = (nextValue || '').toUpperCase().replace(/[^A-Z0-9 .#]/g, '');
+  const cleaned = (nextValue || '').toUpperCase().replace(/[^A-Z0-9 #]/g, '');
   const clipped = cleaned.slice(0, MAX_TEAM_NAME_LENGTH);
   state.team_name_buffer = clipped;
   const key = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
@@ -1128,7 +1128,7 @@ if (grid) {
 const OVERLAY_LABELS = [
   'LEFT', 'RIGHT', 'DOUBLE', 'SINGLE', '', '', 'DM', 'ESC', 'POST', 'EXT',
   'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P',
-  'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '.',
+  'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', '#',
   'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'SPACE', 'BACK\nSPACE', 'MESSAGE\nNUMBER'
 ];
 const OVERLAY_ROWS = [2, 3, 4, 5];

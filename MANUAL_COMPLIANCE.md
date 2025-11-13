@@ -168,7 +168,7 @@ set_main_clock():
 | Team Name Mode | Multi-step with overlay | Multi-step with overlay | ✅ Match |
 | POST button | Required for team selection | Implemented | ✅ Match |
 | LEFT/RIGHT | Select HOME/GUEST | Implemented | ✅ Match |
-| Keyboard Overlay | A-Z, 0-9, space, # | A-Z, 0-9, space, ., # | ✅ Match |
+| Keyboard Overlay | A-Z, 0-9, space, # | A-Z, 0-9, space, # | ✅ Match |
 | Max name length | 12 characters | 12 characters | ✅ Match |
 | Add Penalty | Player # → Time | Player # → Time | ✅ Match |
 | Default Time | 2:00 | 2:00 (120s) | ✅ Match |
