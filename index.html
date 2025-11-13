@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Daktronics AllSports 4100 Emulator (Web)</title>
+  <style>
+    :root{
+      --grid-cols: 18;
+      --button-rows: 4;
+      --gap: 8px;
+      --btn-min-px: 56;
+      --btn-min: clamp(calc(var(--btn-min-px) * 1px), 4.5vw, 100px);
+      --cell-size: var(--btn-min);
+      --radius: 10px;
+      --font: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: var(--font);
+      background:#f2f3f5;
+    }
+    .wrap {
+      display:flex;
+      flex-direction: column;
+      gap: 16px;
+      width: 100%;
+      min-height: 100vh;
+      margin: 0;
+      padding: clamp(16px, 2vw, 32px);
+      box-sizing: border-box;
+    }
+
+    .title { font-weight: 700; font-size: 20px; margin: 0 0 10px; color:#111; }
+
+    /* LCD status bar */
+    .status {
+      border-radius: 12px;
+      background: #0b1a33;
+      color: #bde4ff;
+      padding: 10px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      letter-spacing: 0.5px;
+      min-height: 24px;
+      display:flex; align-items:center;
+      box-shadow: inset 0 0 0 2px #0e2a55, 0 1px 2px rgba(0,0,0,.15);
+    }
+
+    .toolbar { display:flex; gap:14px; align-items:center; }
+    .toolbar label { user-select: none; }
+    .status, .toolbar { align-self: stretch; }
+
+    /* Scoreboard */
+    .scoreboard {
+      align-self: center;
+      width: min(100%, 960px);
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 1fr;
+      grid-template-rows: auto auto auto;
+      gap: 16px;
+      padding: clamp(16px, 2.5vw, 28px);
+      margin-top: 8px;
+      background: linear-gradient(160deg, #2c7be5 0%, #1f5dbf 100%);
+      border-radius: 20px;
+      border: 6px solid #f5f7fb;
+      box-shadow: 0 18px 40px rgba(15, 42, 87, 0.35), inset 0 0 20px rgba(255,255,255,0.08);
+      color: #fefefe;
+      position: relative;
+      overflow: hidden;
+    }
+    .scoreboard::after{
+      content:'';
+      position:absolute;
+      inset:8px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 16px;
+      pointer-events:none;
+    }
+    .scoreboard__cell{
+      position:relative;
+      z-index:2;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:flex-start;
+      gap:10px;
+      text-align:center;
+    }
+    .scoreboard__cell--home{ grid-column:1; grid-row:1 / span 2; }
+    .scoreboard__cell--clock{ grid-column:2; grid-row:1 / span 2; }
+    .scoreboard__cell--guest{ grid-column:3; grid-row:1 / span 2; }
+    .scoreboard__cell--home-penalties{ grid-column:1; grid-row:3; }
+    .scoreboard__cell--center{ grid-column:2; grid-row:3; }
+    .scoreboard__cell--guest-penalties{ grid-column:3; grid-row:3; }
+
+    .scoreboard__team-name{
+      font-size: clamp(20px, 2.4vw, 32px);
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ffd560;
+      text-shadow: 0 0 6px rgba(255, 162, 0, 0.5), 0 0 18px rgba(255, 162, 0, 0.7);
+    }
+    .scoreboard__score-box,
+    .scoreboard__clock-box,
+    .scoreboard__penalty-slot{
+      background: #050505;
+      border-radius: 12px;
+      padding: clamp(10px, 1.6vw, 18px) clamp(14px, 2vw, 24px);
+      border: 3px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 18px rgba(0,0,0,0.65), inset 0 0 4px rgba(255,255,255,0.12);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-width: 0;
+    }
+    .scoreboard__clock-box{
+      width: 100%;
+    }
+    .scoreboard__digits{
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.18em;
+      text-shadow: 0 0 12px currentColor, 0 0 22px rgba(255,255,255,0.35);
+      white-space: nowrap;
+    }
+    .scoreboard__digits--score{
+      font-size: clamp(48px, 7vw, 130px);
+      color: #ff6b5f;
+    }
+    .scoreboard__digits--clock{
+      font-size: clamp(40px, 6vw, 110px);
+      color: #8dff7c;
+    }
+    .scoreboard__digits--period{
+      font-size: clamp(28px, 4vw, 72px);
+      color: #ffe17c;
+    }
+    .scoreboard__digits--mini{
+      font-size: clamp(18px, 2.4vw, 26px);
+      letter-spacing: 0.12em;
+      color: #e3ecff;
+      text-shadow: 0 0 8px rgba(227,236,255,0.5);
+    }
+    .scoreboard__brand{
+      font-size: clamp(12px, 1.4vw, 16px);
+      letter-spacing: 0.4em;
+      color: rgba(246, 251, 255, 0.8);
+      margin-bottom: -4px;
+    }
+    .scoreboard__period-box{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: clamp(10px, 1.6vw, 18px);
+      width: 100%;
+      text-transform: uppercase;
+      letter-spacing: 0.3em;
+      font-weight: 600;
+      color: rgba(255,255,255,0.85);
+    }
+    .scoreboard__subtitle{
+      font-size: clamp(14px, 1.8vw, 20px);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.75);
+    }
+    .scoreboard__penalty-grid{
+      width: 100%;
+      display:grid;
+      gap: 10px;
+    }
+    .scoreboard__penalty-row{
+      display:grid;
+      grid-template-columns: 1fr 1.4fr;
+      gap: 10px;
+      align-items:center;
+    }
+    .scoreboard__penalty-row .scoreboard__digits{
+      display:block;
+      width: 100%;
+      background:#050505;
+      border-radius: 8px;
+      padding: clamp(6px, 1vw, 10px);
+      border: 2px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 12px rgba(0,0,0,0.65);
+    }
+    .scoreboard__penalty-row--empty .scoreboard__digits{
+      color: rgba(255,255,255,0.18);
+      text-shadow: none;
+    }
+    .scoreboard__center{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap: 14px;
+      width:100%;
+    }
+    .scoreboard__center-penalties{
+      display:flex;
+      gap: clamp(12px, 2vw, 26px);
+      align-items:center;
+    }
+    .scoreboard__center-penalties .scoreboard__digits{
+      background:#050505;
+      border-radius: 10px;
+      padding: clamp(8px, 1.3vw, 14px) clamp(16px, 2.3vw, 22px);
+      border: 3px solid rgba(255,255,255,0.08);
+      box-shadow: inset 0 0 14px rgba(0,0,0,0.65);
+    }
+
+    @media (max-width: 900px){
+      .scoreboard{
+        grid-template-columns: repeat(2, 1fr);
+        grid-template-rows: auto auto auto auto;
+      }
+      .scoreboard__cell--home{ grid-column:1; grid-row:1; }
+      .scoreboard__cell--clock{ grid-column:1 / span 2; grid-row:2; }
+      .scoreboard__cell--guest{ grid-column:2; grid-row:1; }
+      .scoreboard__cell--home-penalties{ grid-column:1; grid-row:3; }
+      .scoreboard__cell--center{ grid-column:1 / span 2; grid-row:4; }
+      .scoreboard__cell--guest-penalties{ grid-column:2; grid-row:3; }
+    }
+
+    @media (max-width: 640px){
+      .scoreboard{
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(6, auto);
+      }
+      .scoreboard__cell--home,
+      .scoreboard__cell--clock,
+      .scoreboard__cell--guest,
+      .scoreboard__cell--home-penalties,
+      .scoreboard__cell--center,
+      .scoreboard__cell--guest-penalties{
+        grid-column:1;
+      }
+      .scoreboard__center-penalties{
+        width:100%;
+        justify-content:space-between;
+      }
+    }
+
+    /* Main grid matches Tk rows (1..4) and cols (0..17) */
+    .grid {
+      display: grid;
+      flex: 1 1 auto;
+      min-height: 0;
+      width: 100%;
+      grid-template-columns: repeat(var(--grid-cols), var(--cell-size));
+      grid-template-rows: auto repeat(var(--button-rows), var(--cell-size));
+      gap: var(--gap);
+      background: #d1d5db;
+      border-radius: 14px;
+      padding: 16px;
+      box-shadow: 0 4px 16px rgba(0,0,0,.12), inset 0 1px 0 rgba(255,255,255,.4);
+      margin: 0;
+      overflow: auto;
+      align-content: start;
+      align-items: start;
+      justify-content: center;
+      justify-items: stretch;
+    }
+
+    .btn {
+      display:flex;
+      flex-direction: column;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      min-width: 0;
+      width: 100%;
+      height: 100%;
+      aspect-ratio: 1 / 1;
+      border: 0;
+      border-radius: var(--radius);
+      background: #fff;
+      color:#111;
+      font-weight: 600;
+      line-height: 1.15;
+      box-shadow: 0 1px 0 rgba(255,255,255,.7) inset, 0 2px 6px rgba(0,0,0,.12);
+      cursor: pointer;
+      white-space: pre-line;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+    .btn:active { transform: translateY(1px); }
+
+    .btn.gray { background:#e5e7eb; }
+    .btn.lgray { background:#f3f4f6; }
+    .btn.green { background:#c7f9cc; }
+    .btn.pink { background:#ffd6e7; }
+    .btn.yellow { background:#fff3b0; }
+    .btn.black { background:#111; color:#fff; }
+    .btn.red { background:#fecaca; }
+    .btn.success { background:#bbf7d0; }
+
+    /* Labels */
+    .label { font-weight: 800; font-size: 12px; text-align:center; }
+    .label.home { color:#067a00; }
+    .label.guest{ color:#b00020; }
+
+    /* Subframe (HOME/GUEST boxes) */
+    .frame {
+      background:#c7c9cc;
+      border-radius: 12px;
+      padding: 8px;
+      display: grid;
+      gap: var(--gap);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-content: stretch;
+      align-items: stretch;
+      grid-auto-rows: minmax(var(--btn-min), auto);
+      height: 100%;
+    }
+
+    /* Overlay panel occupies same grid rows/cols as Tk (rows 1..4, cols 0..9) */
+    .overlay {
+      display: grid;
+      gap: var(--gap);
+      grid-template-columns: repeat(10, var(--cell-size));
+      grid-auto-rows: var(--cell-size);
+      align-content: stretch;
+      align-items: stretch;
+    }
+
+    /* Utilities for grid placement */
+    .at { position: relative; }
+    .hidden { display:none !important; }
+    .muted { opacity: .7; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1 class="title">Daktronics AllSports 4100 Emulator (Web)</h1>
+    <div class="scoreboard" id="scoreboard">
+      <div class="scoreboard__cell scoreboard__cell--home">
+        <div class="scoreboard__team-name" id="sbHomeName">HOME</div>
+        <div class="scoreboard__score-box">
+          <span class="scoreboard__digits scoreboard__digits--score" id="sbHomeScore">00</span>
+        </div>
+      </div>
+      <div class="scoreboard__cell scoreboard__cell--clock">
+        <div class="scoreboard__brand">DAKTRONICS</div>
+        <div class="scoreboard__clock-box">
+          <span class="scoreboard__digits scoreboard__digits--clock" id="sbClock">00:00</span>
+        </div>
+        <div class="scoreboard__period-box">
+          <span class="scoreboard__subtitle">PERIOD</span>
+          <span class="scoreboard__digits scoreboard__digits--period" id="sbPeriod">1</span>
+        </div>
+      </div>
+      <div class="scoreboard__cell scoreboard__cell--guest">
+        <div class="scoreboard__team-name" id="sbGuestName">GUEST</div>
+        <div class="scoreboard__score-box">
+          <span class="scoreboard__digits scoreboard__digits--score" id="sbGuestScore">00</span>
+        </div>
+      </div>
+      <div class="scoreboard__cell scoreboard__cell--home-penalties">
+        <div class="scoreboard__subtitle">PLYR&nbsp;&nbsp;PENALTY</div>
+        <div class="scoreboard__penalty-grid" id="sbHomePenalties"></div>
+      </div>
+      <div class="scoreboard__cell scoreboard__cell--center">
+        <div class="scoreboard__center">
+          <div class="scoreboard__subtitle">PENALTY</div>
+          <div class="scoreboard__center-penalties">
+            <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterHomePenalty">00:00</span>
+            <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterGuestPenalty">00:00</span>
+          </div>
+        </div>
+      </div>
+      <div class="scoreboard__cell scoreboard__cell--guest-penalties">
+        <div class="scoreboard__subtitle">PLYR&nbsp;&nbsp;PENALTY</div>
+        <div class="scoreboard__penalty-grid" id="sbGuestPenalties"></div>
+      </div>
+    </div>
+    <div id="status" class="status"></div>
+    <div class="toolbar">
+      <label><input type="checkbox" id="overlayToggle"> Team Name overlay</label>
+      <span class="muted">Keyboard: ↑/↓ move edit selection</span>
+    </div>
+
+    <div id="grid" class="grid"></div>
+  </div>
+
+  <script>
+    // ============= State & helpers (ported from Python) =============
+    const BULLET = "•";
+    const state = {
+      mode: "DEFAULT",            // DEFAULT | PENALTY_ENTRY | PENALTY_EDIT
+      team: null,                  // "HOME" | "GUEST"
+      last_team: "HOME",
+      buffer: "",                 // numeric buffer (player or time)
+      stage: null,                 // "PLAYER" | "TIME"
+      edit_index: 0,               // 0..n ; n is phantom "next" row
+      home_score: 0,
+      guest_score: 0,
+      home_name: "HOME",
+      guest_name: "GUEST",
+      clock_secs: 0,
+      period: 1,
+      penalties: { HOME: [], GUEST: [] }, // list of {player, secs}
+      _player: null,
+      time_default: false,
+      ui_mode: "DEFAULT",         // DEFAULT | MENU | TEAM_NAME
+      menu_index: 0,
+      team_name_stage: "OFF",     // OFF | WAIT_POST | SELECT_SIDE | TYPING
+      team_name_target: null,
+      team_name_buffer: "",
+      team_name_original: "",
+      team_name_overlay_prev: false,
+    };
+
+    const statusEl = document.getElementById('status');
+    const scoreboardEl = document.getElementById('scoreboard');
+    const overlayToggleEl = document.getElementById('overlayToggle');
+    const sbElements = {
+      homeName: document.getElementById('sbHomeName'),
+      guestName: document.getElementById('sbGuestName'),
+      homeScore: document.getElementById('sbHomeScore'),
+      guestScore: document.getElementById('sbGuestScore'),
+      clock: document.getElementById('sbClock'),
+      period: document.getElementById('sbPeriod'),
+      homePenalties: document.getElementById('sbHomePenalties'),
+      guestPenalties: document.getElementById('sbGuestPenalties'),
+      centerHome: document.getElementById('sbCenterHomePenalty'),
+      centerGuest: document.getElementById('sbCenterGuestPenalty'),
+    };
+    const MENU_ITEMS = ['Resume Game', 'Team Name Mode'];
+    const MAX_TEAM_NAME_LENGTH = 12;
+    function setStatus(text){ statusEl.textContent = text; }
+
+    function mask2(digits){
+      const d = digits.slice(-2);
+      return BULLET.repeat(2 - d.length) + d;
+    }
+    function mask_time(digits){
+      let d = digits.slice(-4);
+      d = BULLET.repeat(4 - d.length) + d;
+      return `${d.slice(0,2)}:${d.slice(2)}`;
+    }
+    function fmt_mmss(total){
+      const secs = Math.max(0, total);
+      const m = Math.floor(secs/60);
+      const s = secs % 60;
+      return `${m}:${s.toString().padStart(2,'0')}`;
+    }
+    function fmt_mmss_sel(secs){
+      secs = Math.max(0, secs);
+      const m = Math.floor(secs/60);
+      const s = secs % 60;
+      return `${m < 10 ? BULLET+String(m) : m}:${s.toString().padStart(2,'0')}`;
+    }
+    function parse_time_on_enter(d){
+      if(!d) return 120;       // 2:00
+      if(d.length===1) return parseInt(d)*60;
+      if(d.length===2) return parseInt(d)*60;
+      if(d.length===3) return parseInt(d[0])*60 + Math.min(parseInt(d.slice(1)),59);
+      d = d.slice(-4);
+      return parseInt(d.slice(0,2))*60 + Math.min(parseInt(d.slice(2)),59);
+    }
+    function next_slot_num(team){
+      return Math.min(3, state.penalties[team].length + 1);
+    }
+
+    function fmt_clock_display(total){
+      const secs = Math.max(0, total | 0);
+      const m = Math.floor(secs / 60);
+      const s = secs % 60;
+      return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    }
+    function fmt_score(value){
+      return String(Math.max(0, value|0)).padStart(2,'0');
+    }
+
+    function renderPenaltyGrid(team){
+      const container = team === 'HOME' ? sbElements.homePenalties : sbElements.guestPenalties;
+      if(!container) return;
+      container.innerHTML = '';
+      const entries = state.penalties[team].slice(0, 2);
+      for(let i = 0; i < 2; i++){
+        const row = document.createElement('div');
+        row.className = 'scoreboard__penalty-row';
+        const player = document.createElement('span');
+        player.className = 'scoreboard__digits scoreboard__digits--mini';
+        const time = document.createElement('span');
+        time.className = 'scoreboard__digits scoreboard__digits--mini';
+        const entry = entries[i];
+        if(entry){
+          player.textContent = String(entry.player).padStart(2,'0');
+          time.textContent = fmt_clock_display(entry.secs);
+        } else {
+          row.classList.add('scoreboard__penalty-row--empty');
+          player.textContent = '--';
+          time.textContent = '--:--';
+        }
+        row.append(player, time);
+        container.appendChild(row);
+      }
+    }
+
+    function renderCenterPenalties(){
+      if(!sbElements.centerHome || !sbElements.centerGuest) return;
+      const home = state.penalties.HOME[0];
+      const guest = state.penalties.GUEST[0];
+      sbElements.centerHome.textContent = home ? fmt_clock_display(home.secs) : '--:--';
+      sbElements.centerGuest.textContent = guest ? fmt_clock_display(guest.secs) : '--:--';
+    }
+
+    function renderScoreboard(){
+      if(!sbElements.homeScore) return;
+      sbElements.homeName.textContent = state.home_name;
+      sbElements.guestName.textContent = state.guest_name;
+      sbElements.homeScore.textContent = fmt_score(state.home_score);
+      sbElements.guestScore.textContent = fmt_score(state.guest_score);
+      sbElements.clock.textContent = fmt_clock_display(state.clock_secs);
+      sbElements.period.textContent = String(state.period);
+      renderPenaltyGrid('HOME');
+      renderPenaltyGrid('GUEST');
+      renderCenterPenalties();
+    }
+
+    function setStatusTeamName(message){
+      if(state.ui_mode === 'TEAM_NAME'){
+        setStatus(message);
+      }
+    }
+
+    function updateMenuStatus(){
+      if(state.ui_mode !== 'MENU') return;
+      const lines = MENU_ITEMS.map((item, idx)=> `${idx===state.menu_index ? '>' : ' '} ${item}`);
+      setStatus(`MENU\n${lines.join('\n')}`);
+    }
+
+    function enterMenu(){
+      state.ui_mode = 'MENU';
+      state.menu_index = 0;
+      state.mode = 'DEFAULT';
+      state.team = null;
+      state.buffer = '';
+      state.stage = null;
+      updateMenuStatus();
+    }
+
+    function exitMenu(){
+      state.ui_mode = 'DEFAULT';
+      state.menu_index = 0;
+      lcd_scores();
+    }
+
+    function menuSelect(){
+      if(state.ui_mode !== 'MENU') return;
+      const item = MENU_ITEMS[state.menu_index] || '';
+      if(item === 'Resume Game'){
+        exitMenu();
+      } else if(item === 'Team Name Mode'){
+        startTeamNameMode();
+      }
+    }
+
+    function startTeamNameMode(){
+      state.ui_mode = 'TEAM_NAME';
+      state.menu_index = 0;
+      state.mode = 'DEFAULT';
+      state.team = null;
+      state.buffer = '';
+      state.stage = null;
+      state.team_name_stage = 'WAIT_POST';
+      state.team_name_target = null;
+      state.team_name_buffer = '';
+      state.team_name_original = '';
+      state.team_name_overlay_prev = overlayToggleEl ? !!overlayToggleEl.checked : false;
+      setOverlayVisibility(true);
+      setTeamNameStage('WAIT_POST');
+    }
+
+    function exitTeamNameMode(){
+      if(state.team_name_stage === 'TYPING' && state.team_name_target){
+        const key = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+        state[key] = state.team_name_original || state[key];
+        renderScoreboard();
+      }
+      state.team_name_stage = 'OFF';
+      state.team_name_target = null;
+      state.team_name_buffer = '';
+      state.team_name_original = '';
+      const restore = state.team_name_overlay_prev;
+      setOverlayVisibility(!!restore);
+      state.ui_mode = 'DEFAULT';
+      lcd_scores();
+    }
+
+    function setTeamNameStage(stage, message){
+      state.team_name_stage = stage;
+      if(message){
+        setStatusTeamName(message);
+        return;
+      }
+      if(stage === 'WAIT_POST'){
+        setStatusTeamName('TEAM NAME MODE: Press POST, then LEFT/RIGHT to choose team. Press ESC/EXT to exit.');
+      } else if(stage === 'SELECT_SIDE'){
+        setStatusTeamName('Select team: LEFT for HOME, RIGHT for GUEST.');
+      } else if(stage === 'TYPING'){
+        const label = state.team_name_target || '';
+        setStatusTeamName(`Editing ${label}: type name, BACKSPACE deletes, CLEAR resets, ENTER saves.`);
+      }
+    }
+
+    function overlayIdToChar(id){
+      if(!id) return null;
+      if(id.length === 1 && /[A-Z0-9.]/.test(id)) return id === '.' ? '.' : id;
+      if(id === 'SPACE') return ' ';
+      if(id === 'MESSAGE_NUMBER') return '#';
+      return null;
+    }
+
+    function applyTeamNameBuffer(nextValue){
+      if(!state.team_name_target) return;
+      const cleaned = (nextValue || '').toUpperCase().replace(/[^A-Z0-9 .#]/g,'');
+      const clipped = cleaned.slice(0, MAX_TEAM_NAME_LENGTH);
+      state.team_name_buffer = clipped;
+      const key = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+      state[key] = clipped;
+      renderScoreboard();
+      setTeamNameStage('TYPING');
+    }
+
+    function handleTeamNameOverlay(id){
+      if(id === 'ESC' || id === 'EXT'){
+        exitTeamNameMode();
+        return;
+      }
+      if(id === 'POST'){
+        if(state.team_name_stage === 'TYPING'){
+          if(state.team_name_target){
+            const revertKey = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+            state[revertKey] = state.team_name_original;
+            renderScoreboard();
+          }
+          state.team_name_target = null;
+          state.team_name_buffer = '';
+          state.team_name_original = '';
+          setTeamNameStage('SELECT_SIDE', 'Select team: LEFT for HOME, RIGHT for GUEST.');
+        } else {
+          setTeamNameStage('SELECT_SIDE');
+        }
+        return;
+      }
+      if(state.team_name_stage === 'WAIT_POST'){
+        return;
+      }
+      if(state.team_name_stage === 'SELECT_SIDE'){
+        if(id === 'LEFT' || id === 'RIGHT'){
+          state.team_name_target = id === 'LEFT' ? 'HOME' : 'GUEST';
+          const key = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+          state.team_name_original = (state[key] || '').toUpperCase();
+          state.team_name_buffer = state.team_name_original;
+          applyTeamNameBuffer(state.team_name_buffer);
+          setTeamNameStage('TYPING');
+        }
+        return;
+      }
+      if(state.team_name_stage === 'TYPING'){
+        if(id === 'BACKSPACE'){
+          applyTeamNameBuffer(state.team_name_buffer.slice(0, -1));
+          return;
+        }
+        if(id === 'SPACE'){
+          applyTeamNameBuffer(state.team_name_buffer + ' ');
+          return;
+        }
+        if(id === 'LEFT' || id === 'RIGHT'){
+          if(state.team_name_target){
+            const revertKey = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+            state[revertKey] = state.team_name_original;
+            renderScoreboard();
+          }
+          state.team_name_target = id === 'LEFT' ? 'HOME' : 'GUEST';
+          const key = state.team_name_target === 'HOME' ? 'home_name' : 'guest_name';
+          state.team_name_original = (state[key] || '').toUpperCase();
+          state.team_name_buffer = state.team_name_original;
+          applyTeamNameBuffer(state.team_name_buffer);
+          setTeamNameStage('TYPING');
+          return;
+        }
+        const ch = overlayIdToChar(id);
+        if(ch){
+          applyTeamNameBuffer(state.team_name_buffer + ch);
+        }
+      }
+    }
+
+    function handleTeamNameEnter(){
+      if(state.ui_mode !== 'TEAM_NAME') return false;
+      if(state.team_name_stage === 'SELECT_SIDE'){
+        setTeamNameStage('WAIT_POST', 'Select LEFT or RIGHT before typing. Press POST to choose team.');
+        return true;
+      }
+      if(state.team_name_stage === 'TYPING'){
+        state.team_name_original = state.team_name_buffer;
+        state.team_name_target = null;
+        state.team_name_buffer = '';
+        setTeamNameStage('WAIT_POST', 'Team name saved. Press POST to edit another or ESC/EXT to exit.');
+        return true;
+      }
+      if(state.team_name_stage === 'WAIT_POST'){
+        setTeamNameStage('WAIT_POST');
+        return true;
+      }
+      return false;
+    }
+
+    function handleTeamNameClear(){
+      if(state.ui_mode !== 'TEAM_NAME') return false;
+      if(state.team_name_stage === 'TYPING'){
+        applyTeamNameBuffer('');
+        setTeamNameStage('TYPING', 'Name cleared. Type new name, ENTER saves, POST selects other team.');
+        return true;
+      }
+      return false;
+    }
+
+    // ============= LCD screens =============
+    function lcd_scores(){
+      if(state.ui_mode === 'DEFAULT'){
+        setStatus(`H. SCORE • • ${state.home_score}     G. SCORE • • ${state.guest_score}`);
+      }
+      renderScoreboard();
+    }
+    function lcd_penalty_entry_player(){
+      const slot = next_slot_num(state.team);
+      setStatus(`${slot} PL${mask2(state.buffer)}  PN ${BULLET.repeat(2)}:${BULLET.repeat(2)}`);
+    }
+    function lcd_penalty_entry_time(){
+      const slot = next_slot_num(state.team);
+      const p = state._player != null ? mask2(String(state._player)) : mask2("");
+      setStatus(`${slot} PL${p}  PN ${mask_time(state.buffer)}`);
+    }
+    function lcd_penalty_final(team, player, secs, slotIndex){
+      setStatus(`${slotIndex} PL${player}  PN ${fmt_mmss(secs)}`);
+    }
+    function lcd_penalty_edit_select(){
+      const team = state.team;
+      const L = state.penalties[team];
+      const n = L.length, i = state.edit_index;
+      if(i===n){
+        setStatus(`${n+1} PL${BULLET.repeat(2)}  PN ${BULLET.repeat(2)}:${BULLET.repeat(2)}`);
+        return;
+      }
+      if(!L.length){
+        setStatus(`1 PL${BULLET.repeat(2)}  PN ${BULLET.repeat(2)}:${BULLET.repeat(2)}   (no penalties)`);
+        return;
+      }
+      const {player, secs} = L[i];
+      setStatus(`${i+1} PL${player}  PN ${fmt_mmss_sel(secs)}`);
+    }
+
+    // ============= Actions (ported) =============
+    function home_score_plus_one(){
+      if(state.ui_mode !== 'DEFAULT') return;
+      state.home_score += 1; state.last_team = 'HOME'; lcd_scores();
+    }
+    function guest_score_plus_one(){
+      if(state.ui_mode !== 'DEFAULT') return;
+      state.guest_score += 1; state.last_team = 'GUEST'; lcd_scores();
+    }
+
+    function menu_press(){
+      if(state.ui_mode === 'TEAM_NAME'){
+        exitTeamNameMode();
+        return;
+      }
+      if(state.ui_mode === 'MENU'){
+        exitMenu();
+        return;
+      }
+      enterMenu();
+    }
+
+    function end_press(){
+      if(state.ui_mode === 'TEAM_NAME'){
+        exitTeamNameMode();
+        return;
+      }
+      if(state.ui_mode === 'MENU'){
+        exitMenu();
+        return;
+      }
+    }
+
+    function start_penalty_entry(team){
+      if(state.ui_mode !== 'DEFAULT') return;
+      Object.assign(state, { mode:'PENALTY_ENTRY', team, last_team:team, buffer:'', stage:'PLAYER', _player:null, time_default:false });
+      lcd_penalty_entry_player();
+    }
+
+    function penalty_press_digit(d){
+      if(state.ui_mode !== 'DEFAULT') return;
+      if(state.mode === 'PENALTY_ENTRY'){
+        if(state.stage === 'PLAYER'){
+          if(state.buffer.length < 2) state.buffer += d;
+          lcd_penalty_entry_player();
+        } else if(state.stage === 'TIME'){
+          if(state.time_default){ state.buffer = d; state.time_default = false; }
+          else if(state.buffer.length < 4) state.buffer += d;
+          lcd_penalty_entry_time();
+        }
+      } else if(state.mode === 'PENALTY_EDIT'){
+        if(state.stage !== 'TIME'){
+          state.stage = 'TIME'; state.buffer = d; state.time_default = false;
+        } else if(state.buffer.length < 4){ state.buffer += d; }
+        const idx = state.edit_index;
+        if(idx < state.penalties[state.team].length){
+          const p = state.penalties[state.team][idx].player;
+          setStatus(`${idx+1} PL${p}  PN ${mask_time(state.buffer)}`);
+        }
+      }
+    }
+
+    function penalty_enter(){
+      if(state.ui_mode === 'MENU'){
+        menuSelect();
+        return;
+      }
+      if(handleTeamNameEnter()) return;
+      if(state.ui_mode !== 'DEFAULT'){
+        return;
+      }
+      if(state.mode === 'PENALTY_ENTRY'){
+        if(state.stage === 'PLAYER'){
+          if(!state.buffer){ lcd_penalty_entry_player(); return; }
+          state._player = parseInt(state.buffer,10);
+          state.buffer = '200'; state.time_default = true; state.stage = 'TIME';
+          lcd_penalty_entry_time();
+          return;
+        } else if(state.stage === 'TIME'){
+          const secs = parse_time_on_enter(state.buffer);
+          const team = state.team; const player = parseInt(state._player,10);
+          state.penalties[team].push({player, secs});
+          renderScoreboard();
+          const slotIndex = state.penalties[team].length;
+          lcd_penalty_final(team, player, secs, slotIndex);
+          Object.assign(state, { mode:'DEFAULT', team:null, buffer:'', stage:null, _player:null, time_default:false });
+          return;
+        }
+      } else if(state.mode === 'PENALTY_EDIT'){
+        const team = state.team; const L = state.penalties[team]; const n = L.length;
+        if(n===0){ Object.assign(state, { mode:'DEFAULT', team:null, buffer:'', stage:null }); lcd_scores(); return; }
+        if(state.edit_index === n){
+          state.edit_index = n-1; state.stage = 'TIME'; state.buffer = '200'; state.time_default = true;
+          const p = L[state.edit_index].player;
+          setStatus(`${state.edit_index+1} PL${p}  PN ${mask_time(state.buffer)}`);
+          return;
+        }
+        if(state.stage !== 'TIME'){
+          state.stage = 'TIME'; state.buffer = '200'; state.time_default = true;
+          const idx = state.edit_index; const p = L[idx].player;
+          setStatus(`${idx+1} PL${p}  PN ${mask_time(state.buffer)}`);
+          return;
+        } else {
+          const idx = state.edit_index; const new_secs = parse_time_on_enter(state.buffer);
+          L[idx].secs = new_secs;
+          renderScoreboard();
+          lcd_penalty_final(team, L[idx].player, new_secs, idx+1);
+          Object.assign(state, { mode:'DEFAULT', team:null, buffer:'', stage:null, time_default:false });
+          return;
+        }
+      }
+    }
+
+    function penalty_clear(){
+      if(handleTeamNameClear()) return;
+      if(state.ui_mode !== 'DEFAULT'){
+        return;
+      }
+      if(state.buffer){
+        if(state.stage==='TIME' && (state.mode==='PENALTY_ENTRY' || state.mode==='PENALTY_EDIT')){
+          state.buffer = '200'; state.time_default = true;
+          if(state.mode==='PENALTY_ENTRY'){ lcd_penalty_entry_time(); }
+          else { const idx = state.edit_index; if(idx < state.penalties[state.team].length){
+              const p = state.penalties[state.team][idx].player;
+              setStatus(`${idx+1} PL${p}  PN ${mask_time(state.buffer)}`);
+            }}
+          return;
+        }
+        state.buffer = '';
+        if(state.mode==='PENALTY_ENTRY'){
+          (state.stage==='PLAYER') ? lcd_penalty_entry_player() : lcd_penalty_entry_time();
+        } else if(state.mode==='PENALTY_EDIT'){
+          lcd_penalty_edit_select();
+        }
+      } else {
+        Object.assign(state, { mode:'DEFAULT', team:null, buffer:'', stage:null, _player:null, time_default:false });
+        lcd_scores();
+      }
+    }
+
+    function start_penalty_edit(team){
+      if(state.ui_mode !== 'DEFAULT') return;
+      Object.assign(state, { mode:'PENALTY_EDIT', team, last_team:team, buffer:'', stage:null, time_default:false });
+      state.edit_index = state.penalties[team].length; // start on phantom
+      lcd_penalty_edit_select();
+    }
+
+    function ensure_edit_mode(){ if(state.mode !== 'PENALTY_EDIT') start_penalty_edit(state.last_team); }
+
+    function move_edit_selection(delta){
+      if(state.ui_mode === 'MENU'){
+        const total = MENU_ITEMS.length;
+        if(total){
+          state.menu_index = (state.menu_index + delta + total) % total;
+          updateMenuStatus();
+        }
+        return;
+      }
+      if(state.ui_mode !== 'DEFAULT'){
+        return;
+      }
+      ensure_edit_mode();
+      if(state.mode !== 'PENALTY_EDIT') return;
+      const L = state.penalties[state.team];
+      const n = L.length;
+      state.edit_index = (state.edit_index + delta + (n+1)) % (n+1);
+      state.stage = null; state.buffer = ''; state.time_default = false;
+      lcd_penalty_edit_select();
+    }
+
+    function on_overlay_press(id){
+      if(state.ui_mode === 'TEAM_NAME'){
+        handleTeamNameOverlay(id);
+        return;
+      }
+      lcd_scores();
+    }
+
+    // ============= UI construction =============
+    const grid = document.getElementById('grid');
+    const wrapEl = document.querySelector('.wrap');
+    const titleEl = document.querySelector('.title');
+    const toolbarEl = document.querySelector('.toolbar');
+    const GRID_COLS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--grid-cols'), 10) || 18;
+    const BUTTON_ROWS = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--button-rows'), 10) || 4;
+    const MIN_CELL = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--btn-min-px')) || 56;
+
+    function computeCellSize(){
+      if(!wrapEl || !grid) return;
+      const wrapStyles = getComputedStyle(wrapEl);
+      const padX = parseFloat(wrapStyles.paddingLeft) + parseFloat(wrapStyles.paddingRight);
+      const padY = parseFloat(wrapStyles.paddingTop) + parseFloat(wrapStyles.paddingBottom);
+      const gapY = parseFloat(wrapStyles.rowGap) || 0;
+
+      const statusEl = document.getElementById('status');
+      const headerElems = [titleEl, scoreboardEl, statusEl, toolbarEl].filter(Boolean);
+      const headerHeight = headerElems.reduce((sum, el)=> sum + el.getBoundingClientRect().height, 0);
+      const gapsAboveGrid = headerElems.length;
+      const availableHeight = window.innerHeight - padY - headerHeight - gapY * gapsAboveGrid;
+
+      const gridStyles = getComputedStyle(grid);
+      const gridPadX = parseFloat(gridStyles.paddingLeft) + parseFloat(gridStyles.paddingRight);
+      const gridPadY = parseFloat(gridStyles.paddingTop) + parseFloat(gridStyles.paddingBottom);
+      const cellGap = parseFloat(gridStyles.gap) || parseFloat(gridStyles.rowGap) || 0;
+
+      const availableWidth = wrapEl.clientWidth - padX;
+      const widthForCells = availableWidth - gridPadX - cellGap * (GRID_COLS - 1);
+      const heightForCells = availableHeight - gridPadY - cellGap * (BUTTON_ROWS - 1);
+
+      let cellFromWidth = widthForCells / GRID_COLS;
+      let cellFromHeight = heightForCells / BUTTON_ROWS;
+
+      if(!Number.isFinite(cellFromWidth)) cellFromWidth = MIN_CELL;
+      if(!Number.isFinite(cellFromHeight)) cellFromHeight = MIN_CELL;
+
+      let nextSize = Math.min(cellFromWidth, cellFromHeight);
+      if(!Number.isFinite(nextSize) || nextSize <= 0){
+        nextSize = Math.max(cellFromWidth, cellFromHeight, MIN_CELL);
+      }
+      nextSize = Math.max(nextSize, MIN_CELL);
+
+      document.documentElement.style.setProperty('--cell-size', `${nextSize}px`);
+    }
+
+    window.addEventListener('resize', computeCellSize);
+    window.addEventListener('load', computeCellSize);
+    if('ResizeObserver' in window && wrapEl){
+      const ro = new ResizeObserver(()=>computeCellSize());
+      ro.observe(wrapEl);
+    }
+
+    function place(el, r, c, colSpan=1){
+      el.style.gridRowStart = r; // 1-indexed
+      el.style.gridColumn = `${c} / span ${colSpan}`;
+      return el;
+    }
+
+    function mkBtn(text, cls, onClick){
+      const b = document.createElement('button');
+      b.className = `btn ${cls||''}`.trim();
+      b.style.whiteSpace = 'pre-line';
+      b.textContent = text;
+      if(onClick) b.addEventListener('click', onClick);
+      return b;
+    }
+
+    function mkLabel(text, moreCls){
+      const d = document.createElement('div');
+      d.className = `label ${moreCls||''}`.trim();
+      d.textContent = text;
+      return d;
+    }
+
+    // HOME label & frame
+    const homeLabel = place(mkLabel('HOME','home'), 1, 2, 2);
+    const homeFrame = document.createElement('div'); homeFrame.className='frame';
+    place(homeFrame, 2, 2, 2); homeFrame.style.gridRowEnd = 'span 4'; // rowspan 4 (rows 1..4)
+
+    // HOME frame buttons (2 cols x 4 rows inside)
+    homeFrame.append(
+      mkBtn('< PENALTY', 'green', ()=>start_penalty_edit('HOME')),
+      mkBtn('PLAYER\n*\nPENLTY\n*', 'green', ()=>start_penalty_entry('HOME')),
+      mkBtn('SHOTS\nON GOAL','green', null),
+      mkBtn('SHOTS\nON GOAL +1','green', null),
+      mkBtn('', '', null), mkBtn('', '', null),
+      mkBtn('SCORE\n*','green', null),
+      mkBtn('SCORE\n+1','green', home_score_plus_one),
+    );
+
+    // GUEST label & frame
+    const guestLabel = place(mkLabel('GUEST','guest'), 1, 8, 2);
+    const guestFrame = document.createElement('div'); guestFrame.className='frame';
+    place(guestFrame, 2, 8, 2); guestFrame.style.gridRowEnd = 'span 4';
+
+    guestFrame.append(
+      mkBtn('PENLTY >', 'pink', ()=>start_penalty_edit('GUEST')),
+      mkBtn('PLAYER\n*\nPENLTY\n*', 'pink', ()=>start_penalty_entry('GUEST')),
+      mkBtn('SHOTS\nON GOAL','pink', null),
+      mkBtn('SHOTS\nON GOAL +1','pink', null),
+      mkBtn('', '', null), mkBtn('', '', null),
+      mkBtn('SCORE\n*','pink', null),
+      mkBtn('SCORE\n+1','pink', guest_score_plus_one),
+    );
+
+    // Add shared blanks & main keypad/buttons according to Tk layout
+    function blank(r,c){ grid.appendChild(place(mkBtn('', 'lgray', null), r, c)); }
+
+    // Row 1
+    blank(2,1);
+    blank(2,4);
+    grid.appendChild(place(mkBtn('ENABLE\nPENLTY CLOCKS','', null), 2,5));
+    grid.appendChild(place(mkBtn('DISABLE\nPENLTY CLOCKS','', null), 2,6));
+    blank(2,7);
+    blank(2,10);
+    grid.appendChild(place(mkBtn('7','', ()=>penalty_press_digit('7')), 2,11));
+    grid.appendChild(place(mkBtn('8','', ()=>penalty_press_digit('8')), 2,12));
+    grid.appendChild(place(mkBtn('9','', ()=>penalty_press_digit('9')), 2,13));
+    grid.appendChild(place(mkBtn('↑','gray', ()=>move_edit_selection(-1)), 2,15));
+    grid.appendChild(place(mkBtn('AUTO\nHORN\n*','', null), 2,17));
+    grid.appendChild(place(mkBtn('HORN','yellow', null), 2,18));
+
+    // Row 2
+    blank(3,1);
+    blank(3,4);
+    blank(3,5);
+    blank(3,6);
+    blank(3,7);
+    blank(3,10);
+    grid.appendChild(place(mkBtn('4','', ()=>penalty_press_digit('4')), 3,11));
+    grid.appendChild(place(mkBtn('5','', ()=>penalty_press_digit('5')), 3,12));
+    grid.appendChild(place(mkBtn('6','', ()=>penalty_press_digit('6')), 3,13));
+    grid.appendChild(place(mkBtn('←','gray', null), 3,14));
+    grid.appendChild(place(mkBtn('MENU','black', menu_press), 3,15));
+    grid.appendChild(place(mkBtn('→','gray', null), 3,16));
+
+    // Row 3
+    blank(4,1);
+    blank(4,4);
+    grid.appendChild(place(mkBtn('PERIOD\n*','', null), 4,5));
+    grid.appendChild(place(mkBtn('PERIOD\n+1','', null), 4,6));
+    blank(4,7);
+    blank(4,10);
+    grid.appendChild(place(mkBtn('1','', ()=>penalty_press_digit('1')), 4,11));
+    grid.appendChild(place(mkBtn('2','', ()=>penalty_press_digit('2')), 4,12));
+    grid.appendChild(place(mkBtn('3','', ()=>penalty_press_digit('3')), 4,13));
+    grid.appendChild(place(mkBtn('↓','gray', ()=>move_edit_selection(+1)), 4,15));
+    grid.appendChild(place(mkBtn('COUNT\nUP/DOWN\n*','', null), 4,17));
+    grid.appendChild(place(mkBtn('START','success', null), 4,18));
+
+    // Row 4
+    blank(5,1);
+    blank(5,4);
+    blank(5,5);
+    blank(5,6);
+    blank(5,7);
+    blank(5,10);
+    grid.appendChild(place(mkBtn('CLEAR\nNO','', penalty_clear), 5,11));
+    grid.appendChild(place(mkBtn('0','', ()=>penalty_press_digit('0')), 5,12));
+    grid.appendChild(place(mkBtn('ENTER\n*\nYES','', penalty_enter), 5,13));
+    grid.appendChild(place(mkBtn('SET\nMAIN\nCLOCK\n*','', null), 5,17));
+    grid.appendChild(place(mkBtn('END','red', end_press), 5,18));
+
+    // Inject labels & frames into grid
+    grid.appendChild(homeLabel);
+    grid.appendChild(homeFrame);
+    grid.appendChild(guestLabel);
+    grid.appendChild(guestFrame);
+
+    // ============= Overlay (team name overlay) =============
+    const OVERLAY_LABELS = [
+      'LEFT','RIGHT','DOUBLE','SINGLE','','','DM','ESC','POST','EXT',
+      'Q','W','E','R','T','Y','U','I','O','P',
+      'A','S','D','F','G','H','J','K','L','.',
+      'Z','X','C','V','B','N','M','SPACE','BACK\nSPACE','MESSAGE\nNUMBER'
+    ];
+    const OVERLAY_ROWS = [2,3,4,5];
+
+    function normalizeId(label, idx){
+      if(!label || !label.trim()) return `BLANK_${idx}`;
+      let s = label.replace(/\n/g,'_').replace(/ /g,'_').replace('BACK__', 'BACK_');
+      s = s.replace('BACK_SPACE','BACKSPACE').replace('MESSAGE__NUMBER','MESSAGE_NUMBER');
+      return s;
+    }
+
+    const overlayButtons = [];
+    let overlayCreated = false;
+    const overlayContainer = document.createElement('div');
+    overlayContainer.className = 'overlay';
+    place(overlayContainer, 2, 1, 10); // rows 2..5, cols 1..10 area
+    overlayContainer.style.gridRowEnd = 'span 4';
+    function setOverlayVisibility(show, fromToggle=false){
+      if(overlayToggleEl && !fromToggle){
+        overlayToggleEl.checked = show;
+      }
+      if(show){ showOverlay(); } else { hideOverlay(); }
+    }
+
+    function createOverlayIfNeeded(){
+      if(overlayCreated) return;
+      let idx = 0;
+      for(const r of OVERLAY_ROWS){
+        for(let c=0; c<10; c++){
+          const text = OVERLAY_LABELS[idx];
+          const id = normalizeId(text, idx);
+          const b = mkBtn(text, '', ()=>on_overlay_press(id));
+          overlayContainer.appendChild(b);
+          overlayButtons.push(b);
+          idx++;
+        }
+      }
+      overlayCreated = true;
+    }
+
+    function showOverlay(){
+      homeLabel.classList.add('hidden');
+      guestLabel.classList.add('hidden');
+      homeFrame.classList.add('hidden');
+      guestFrame.classList.add('hidden');
+      createOverlayIfNeeded();
+      grid.appendChild(overlayContainer);
+      overlayContainer.classList.remove('hidden');
+      computeCellSize();
+    }
+    function hideOverlay(){
+      overlayContainer.classList.add('hidden');
+      homeLabel.classList.remove('hidden');
+      guestLabel.classList.remove('hidden');
+      homeFrame.classList.remove('hidden');
+      guestFrame.classList.remove('hidden');
+      computeCellSize();
+    }
+
+    if(overlayToggleEl){
+      overlayToggleEl.addEventListener('change', (e)=>{
+        setOverlayVisibility(!!e.target.checked, true);
+      });
+    }
+
+    // ============= Keyboard bindings (Up/Down) =============
+    window.addEventListener('keydown', (e)=>{
+      if(e.key==='ArrowUp'){ e.preventDefault(); move_edit_selection(-1); }
+      if(e.key==='ArrowDown'){ e.preventDefault(); move_edit_selection(+1); }
+    });
+
+    // Init
+    hideOverlay();
+    computeCellSize();
+    lcd_scores();
+  </script>
+</body>
+</html>
