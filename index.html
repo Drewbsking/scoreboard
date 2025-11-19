@@ -10,43 +10,43 @@
   <div class="wrap">
     <h1 class="title">Daktronics AllSports 4100 Emulator (Web)</h1>
     <div class="scoreboard" id="scoreboard">
-      <div class="scoreboard__cell scoreboard__cell--home">
-        <div class="scoreboard__team-name" id="sbHomeName">HOME</div>
-        <div class="scoreboard__score-box">
-          <span class="scoreboard__digits scoreboard__digits--score" id="sbHomeScore">00</span>
-        </div>
-      </div>
-      <div class="scoreboard__cell scoreboard__cell--clock">
-        <div class="scoreboard__brand">DAKTRONICS</div>
+      <!-- Row 1: Team Names and Clock -->
+      <div class="scoreboard__row scoreboard__row--top">
+        <div class="scoreboard__team-name scoreboard__team-name--home" id="sbHomeName">HOME</div>
         <div class="scoreboard__clock-box">
           <span class="scoreboard__digits scoreboard__digits--clock" id="sbClock">00:00</span>
+        </div>
+        <div class="scoreboard__team-name scoreboard__team-name--guest" id="sbGuestName">GUEST</div>
+      </div>
+
+      <!-- Row 2: Scores and Period -->
+      <div class="scoreboard__row scoreboard__row--scores">
+        <div class="scoreboard__score-box scoreboard__score-box--home">
+          <span class="scoreboard__digits scoreboard__digits--score" id="sbHomeScore">00</span>
         </div>
         <div class="scoreboard__period-box">
           <span class="scoreboard__subtitle">PERIOD</span>
           <span class="scoreboard__digits scoreboard__digits--period" id="sbPeriod">1</span>
         </div>
-      </div>
-      <div class="scoreboard__cell scoreboard__cell--guest">
-        <div class="scoreboard__team-name" id="sbGuestName">GUEST</div>
-        <div class="scoreboard__score-box">
+        <div class="scoreboard__score-box scoreboard__score-box--guest">
           <span class="scoreboard__digits scoreboard__digits--score" id="sbGuestScore">00</span>
         </div>
       </div>
-      <div class="scoreboard__cell scoreboard__cell--home-penalties">
+
+      <!-- Row 3: Penalty Headers -->
+      <div class="scoreboard__row scoreboard__row--penalty-headers">
         <div class="scoreboard__subtitle">PLYR&nbsp;&nbsp;PENALTY</div>
+        <div class="scoreboard__subtitle scoreboard__subtitle--center">PENALTY</div>
+        <div class="scoreboard__subtitle">PLYR&nbsp;&nbsp;PENALTY</div>
+      </div>
+
+      <!-- Row 4: Penalty Displays -->
+      <div class="scoreboard__row scoreboard__row--penalties">
         <div class="scoreboard__penalty-grid" id="sbHomePenalties"></div>
-      </div>
-      <div class="scoreboard__cell scoreboard__cell--center">
-        <div class="scoreboard__center">
-          <div class="scoreboard__subtitle">PENALTY</div>
-          <div class="scoreboard__center-penalties">
-            <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterHomePenalty">00:00</span>
-            <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterGuestPenalty">00:00</span>
-          </div>
+        <div class="scoreboard__center-penalties">
+          <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterHomePenalty">00:00</span>
+          <span class="scoreboard__digits scoreboard__digits--mini" id="sbCenterGuestPenalty">00:00</span>
         </div>
-      </div>
-      <div class="scoreboard__cell scoreboard__cell--guest-penalties">
-        <div class="scoreboard__subtitle">PLYR&nbsp;&nbsp;PENALTY</div>
         <div class="scoreboard__penalty-grid" id="sbGuestPenalties"></div>
       </div>
     </div>
