@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Daktronics AllSports 4100 Emulator (Web)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- STATUS / LCD -->
+    <div id="status" aria-live="polite"></div>
+
+    <!-- Overlay toggle -->
+    <label class="toggle">
+      <input id="overlayToggle" type="checkbox" />
+      Team Name overlay
+    </label>
+
+    <!-- Main grid frame (buttons get injected here) -->
+    <div id="frame" class="grid"></div>
+
+    <!-- Overlay grid (4 rows x 10 cols) -->
+    <div id="overlay" class="overlay-grid" hidden></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

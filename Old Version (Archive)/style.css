@@ -1,0 +1,134 @@
+:root{
+  --btn-w: 96px;
+  --btn-h: 72px;
+  --gap: 8px;
+  --frame-padding: 24px;
+  --bg: #d3d3d3;
+  --lcd-bg: #f2f2f2;
+  --lcd-fg: #111;
+  --border: #888;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: #000;
+}
+
+#app {
+  padding: 16px;
+}
+
+#status {
+  font-family: Consolas, Menlo, "Roboto Mono", ui-monospace, monospace;
+  background: var(--lcd-bg);
+  color: var(--lcd-fg);
+  padding: 10px 16px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 12px 110px 6px 110px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.toggle {
+  display: block;
+  margin: 0 110px 10px 110px;
+  user-select: none;
+}
+
+.grid {
+  background: #9a9a9a4a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--frame-padding);
+  margin: 0 100px;
+  display: grid;
+  /* 18 columns to match your layout columns 0..17 */
+  grid-template-columns: repeat(18, var(--btn-w));
+  grid-auto-rows: var(--btn-h);
+  gap: var(--gap);
+}
+
+/* Generic button style */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  white-space: pre-line;     /* allow \n breaks like Tk */
+  border: 1px solid #666;
+  border-radius: 6px;
+  background: #fff;
+  padding: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+/* Color helpers */
+.green   { background: #90ee90; }   /* lightgreen */
+.pink    { background: #ffb6c1; }   /* lightpink */
+.yellow  { background: #ffe08a; }
+.gray    { background: #e6e6e6; }
+.white   { background: #fff; }
+.black   { background: #000; color: #fff; }
+
+/* Labels above frames */
+.label {
+  align-self: end;
+  justify-self: center;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.label.home { color: green; }
+.label.guest { color: #d00; }
+
+/* Framed boxes (HOME/GUEST) */
+.box {
+  border: 2px groove #6b6b6b;
+  background: #bdbdbd4a;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, var(--btn-w));
+  grid-auto-rows: var(--btn-h);
+  gap: var(--gap);
+}
+
+/* Position helpers matching your Tk grid coords (row/column are 1-based in comments) */
+.pos { /* base class so we can attach grid coords via style attr */ }
+
+/* Overlay grid */
+.overlay-grid{
+  margin: 0 100px;
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(10, var(--btn-w));
+  grid-auto-rows: var(--btn-h);
+  gap: var(--gap);
+}
+
+.hidden { display: none !important; }
+
+/* Small responsive touch-ups */
+@media (max-width: 1300px){
+  :root { --btn-w: 86px; --btn-h: 64px; }
+  #status, .toggle { margin-left: 24px; margin-right: 24px; }
+  .grid, .overlay-grid { margin-left: 16px; margin-right: 16px; }
+}
+@media (max-width: 980px){
+  :root { --btn-w: 80px; --btn-h: 60px; }
+}
+@media (max-width: 860px){
+  :root { --btn-w: 68px; --btn-h: 50px; }
+}
